@@ -2,7 +2,6 @@
 "use server";
 
 import {
-  getDefaultDashboardRoute,
   getRedirectAfterLogin,
   UserRole,
 } from "@/lib/authUtils";
