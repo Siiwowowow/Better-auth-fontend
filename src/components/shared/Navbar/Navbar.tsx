@@ -3,9 +3,19 @@
 import React from 'react';
 import Link from 'next/link';
 import { useUser } from '@/hooks/useUser';
+import { toast } from 'sonner';
 
 export default function Navbar() {
   const { user, logout } = useUser();
+
+  const handleLogout = async () => {
+    toast.loading("Logging out...", { id: "logout" });
+    await logout();
+    toast.success("Successfully logged out!", {
+      id: "logout",
+      description: "You have been logged out successfully.",
+    });
+  };
 
   return (
     <nav className="flex justify-between items-center p-4 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 shadow-sm sticky top-0 z-50 transition-all">
@@ -21,7 +31,7 @@ export default function Navbar() {
               {user.name || user.email || 'Welcome'}
             </span>
             <button 
-              onClick={() => logout()}
+              onClick={handleLogout}
               className="px-4 py-2 text-sm font-medium bg-red-500/10 text-red-600 dark:text-red-400 rounded-md hover:bg-red-500 hover:text-white transition-all cursor-pointer"
             >
               Logout
