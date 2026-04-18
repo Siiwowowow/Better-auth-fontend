@@ -1,3 +1,4 @@
+//src/lib/axios/httpClient.ts
 import { ApiResponse } from '@/types/api.types';
 import axios from 'axios';
 
@@ -7,17 +8,30 @@ if(!API_BASE_URL) {
     throw new Error('API_BASE_URL is not defined in environment variables');
 }
 
-const axiosInstance = () => {
-    const instance = axios.create({
-        baseURL : API_BASE_URL,
-        timeout : 30000,
-        headers:{
-            'Content-Type' : 'application/json',
-        }
-    })
+const instance = axios.create({
+    baseURL: API_BASE_URL,
+    timeout: 30000,
+    withCredentials: true,
+    headers: {
+        'Content-Type': 'application/json',
+    }
+});
 
-    return instance;
-}
+// Axios response interceptor 401 এরর ধরার জন্য
+instance.interceptors.response.use(
+    (response) => response,
+    (error) => {
+        if (error.response && error.response.status === 401) {
+            console.warn("Session expired or invalid, redirecting to login...");
+            if (typeof window !== 'undefined') {
+                window.location.href = '/login'; // লগইন পেজে পাঠিয়ে দিচ্ছে
+            }
+        }
+        return Promise.reject(error);
+    }
+);
+
+const axiosInstance = () => instance;
 
 export interface ApiRequestOptions {
     params?: Record<string, unknown>;

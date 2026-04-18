@@ -3,17 +3,12 @@
 import { createContext, useContext, useState } from "react";
 import { logoutUser } from "@/services/auth.services";
 import { useRouter } from "next/navigation";
+import { ICurrentUser } from "@/lib/authUtils"; // ✅ import করুন
 
-export interface CurrentUser {
-    id?: string;
-    name?: string;
-    email?: string;
-    [key: string]: unknown;
-}
-
+// ✅ আলাদা CurrentUser বাদ দিয়ে ICurrentUser ব্যবহার করুন
 interface AuthContextType {
-    user: CurrentUser | null;
-    setUser: (user: CurrentUser | null) => void;
+    user: ICurrentUser | null;
+    setUser: (user: ICurrentUser | null) => void;
     logout: () => Promise<void>;
 }
 
@@ -24,19 +19,14 @@ export function AuthProvider({
     initialUser 
 }: { 
     children: React.ReactNode; 
-    initialUser: CurrentUser | null;
+    initialUser: ICurrentUser | null; // ✅ type fixed
 }) {
-    const [user, setUser] = useState<CurrentUser | null>(initialUser);
+    const [user, setUser] = useState<ICurrentUser | null>(initialUser);
     const router = useRouter();
 
     const logout = async () => {
-        // Clear state
         setUser(null);
-        
-        // Remove cookies via server action
         await logoutUser();
-        
-        // Refresh router to update server components
         router.refresh();
         router.push("/login");
     };

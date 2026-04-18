@@ -2,6 +2,8 @@
 
 import { cookies } from "next/headers";
 
+const isProduction = process.env.NODE_ENV === "production";
+
 export const setCookie = async (
     name : string,
     value : string,
@@ -11,7 +13,7 @@ export const setCookie = async (
 
     cookieStore.set(name, value, {
         httpOnly : true,
-        secure : true,
+        secure : isProduction,
         sameSite : "lax",
         path : "/",
         maxAge : maxAgeInSeconds,

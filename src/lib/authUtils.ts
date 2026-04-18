@@ -1,5 +1,8 @@
 // src/lib/authUtils.ts
 
+import { getCookie } from "./cookieUtils";
+import { jwtUtils } from "./jwtUtils";
+
 export type UserRole = "SUPER_ADMIN" | "ADMIN" | "USER";
 export type UserStatus = "PENDING_VERIFICATION" | "ACTIVE" | "BLOCKED" | "DELETED";
 
@@ -199,6 +202,29 @@ export const isValidRedirectForRole = (
   return routeOwner === normalizedRole;
 };
 
+
+export const getUserFromToken = async (): Promise<ICurrentUser | null> => {
+  try {
+    const accessToken = await getCookie("accessToken");
+
+    if (!accessToken) return null;
+
+    const decoded = jwtUtils.decodedToken(accessToken);
+
+    if (!decoded) return null;
+
+    // Token expired কিনা check
+    if (decoded.exp && decoded.exp < Math.floor(Date.now() / 1000)) {
+      return null;
+    }
+
+    return decoded as unknown as ICurrentUser;
+  } catch (error) {
+    console.error("Error decoding token:", error);
+    return null;
+  }
+};
+
 export const getAccessibleRoutes = (role: UserRole): string[] => {
   const routes: string[] = [
     ...publicRoutes,
@@ -274,6 +300,7 @@ export const isAdminRoute = (pathname: string): boolean => {
 export const isUserRoute = (pathname: string): boolean => {
   return isRouteMatches(pathname, userProtectedRoutes);
 };
+
 
 export const isProtectedRoute = (pathname: string): boolean => {
   return (
