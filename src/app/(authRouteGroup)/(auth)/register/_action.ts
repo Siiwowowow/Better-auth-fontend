@@ -1,32 +1,15 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-// src/app/(commonLayout)/(auth)/register/_action.ts
 "use server";
-
-import { IRegisterPayload, registerZodSchema } from "@/zod/auth.validation";
 
 const BASE_API_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
 
-export async function registerAction(payload: IRegisterPayload, redirectPath?: string) {
+// ✅ IRegisterPayload বাদ — এখন সরাসরি FormData নেবে
+export async function registerAction(formData: FormData) {
   try {
-    // Validate payload
-    const validated = registerZodSchema.safeParse(payload);
-    if (!validated.success) {
-      return {
-        success: false,
-        message: validated.error.issues[0].message,
-      };
-    }
-
     const res = await fetch(`${BASE_API_URL}/auth/register`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        name: payload.name,
-        email: payload.email,
-        password: payload.password,
-      }),
+      // ✅ Content-Type header দেবেন না — browser নিজে multipart/form-data set করবে
+      body: formData,
       credentials: "include",
     });
 

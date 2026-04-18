@@ -6,7 +6,7 @@ import QueryProviders from "@/providers/QueryProvider";
 import { AuthProvider } from "@/providers/AuthProvider";
 import Navbar from "@/components/shared/Navbar/Navbar";
 import { Toaster } from "sonner";
-import { getUserFromToken } from "@/lib/authUtils";
+import { getUserInfo } from "@/services/auth.services";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -28,7 +28,7 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const user = await getUserFromToken();
+  const user = await getUserInfo();
 
   return (
     <html
