@@ -1,11 +1,11 @@
 "use client";
 
 import { useUser } from "@/hooks/useUser";
-
 import { useRef, useState, useEffect } from "react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
-import { Camera, Trash2, LogOut } from "lucide-react";
+import { Camera, Trash2, LogOut, User } from "lucide-react";
+import Link from "next/link";
 import {
   Avatar,
   AvatarImage,
@@ -16,12 +16,7 @@ import { removeProfilePhotoService, updateMyProfileService } from "@/services/us
 
 const getInitials = (name?: string, email?: string): string => {
   if (name) {
-    return name
-      .split(" ")
-      .map((n) => n[0])
-      .join("")
-      .toUpperCase()
-      .slice(0, 2);
+    return name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2);
   }
   if (email) return email[0].toUpperCase();
   return "U";
@@ -34,7 +29,6 @@ export default function UserAvatar() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
-
   const initials = getInitials(user?.name, user?.email);
 
   // ✅ Outside click এ dropdown বন্ধ
@@ -117,7 +111,7 @@ export default function UserAvatar() {
         onChange={handleFileChange}
       />
 
-      {/* ✅ Avatar button — shadcn Avatar component */}
+      {/* ✅ Avatar button */}
       <button
         onClick={() => setOpen((v) => !v)}
         className="focus:outline-none"
@@ -130,15 +124,17 @@ export default function UserAvatar() {
             </AvatarFallback>
           ) : (
             <>
-              <AvatarImage
-                src={user?.image || ""}
-                alt={user?.name || "User"}
-              />
+              {/* ✅ image থাকলেই render করুন — empty string দেবেন না */}
+              {user?.image && (
+                <AvatarImage
+                  src={user.image}
+                  alt={user?.name || "User"}
+                  referrerPolicy="no-referrer"
+                />
+              )}
               <AvatarFallback>{initials}</AvatarFallback>
             </>
           )}
-
-          {/* ✅ Camera badge — AvatarBadge component */}
           <AvatarBadge>
             <Camera strokeWidth={2.5} />
           </AvatarBadge>
@@ -151,20 +147,19 @@ export default function UserAvatar() {
 
           {/* User info header */}
           <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-100 dark:border-gray-800">
-            {/* ✅ Dropdown এর ভেতরেও Avatar component */}
             <Avatar>
-  {user?.image ? (
-    <AvatarImage
-      src={user.image}
-      alt={user.name || "User"}
-      referrerPolicy="no-referrer" // 🔥 IMPORTANT FOR GOOGLE IMAGES
-    />
-  ) : (
-    <AvatarFallback className="bg-gray-200 text-gray-700">
-      {initials}
-    </AvatarFallback>
-  )}
-</Avatar>
+              {/* ✅ image থাকলেই render করুন */}
+              {user?.image && (
+                <AvatarImage
+                  src={user.image}
+                  alt={user?.name || "User"}
+                  referrerPolicy="no-referrer"
+                />
+              )}
+              <AvatarFallback className="bg-gray-200 text-gray-700">
+                {initials}
+              </AvatarFallback>
+            </Avatar>
 
             <div className="min-w-0">
               <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
@@ -176,8 +171,20 @@ export default function UserAvatar() {
             </div>
           </div>
 
-          {/* Photo options */}
+          {/* ✅ Profile page link */}
           <div className="py-1">
+            <Link
+              href="/profile"
+              onClick={() => setOpen(false)}
+              className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+            >
+              <User className="w-4 h-4 flex-shrink-0" />
+              My profile
+            </Link>
+          </div>
+
+          {/* Photo options */}
+          <div className="border-t border-gray-100 dark:border-gray-800 py-1">
             <button
               onClick={() => {
                 fileInputRef.current?.click();
@@ -189,7 +196,7 @@ export default function UserAvatar() {
               {user?.image ? "Change photo" : "Upload photo"}
             </button>
 
-            {/* Image থাকলেই শুধু Remove দেখাবে */}
+            {/* image থাকলেই Remove দেখাবে */}
             {user?.image && (
               <button
                 onClick={handleRemovePhoto}
