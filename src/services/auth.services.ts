@@ -1,3 +1,4 @@
+//src/services/auth.services.ts
 "use server";
 
 import { setTokenInCookies } from "@/lib/tokenUtils";
@@ -9,7 +10,13 @@ if (!BASE_API_URL) {
     throw new Error("NEXT_PUBLIC_API_BASE_URL is not defined");
 }
 
-export async function getNewTokensWithRefreshToken(refreshToken: string): Promise<boolean> {
+export interface IRefreshTokenData {
+    accessToken: string;
+    refreshToken: string;
+    token: string;
+}
+
+export async function getNewTokensWithRefreshToken(refreshToken: string): Promise<IRefreshTokenData | null> {
     try {
         const res = await fetch(`${BASE_API_URL}/auth/refresh-token`, {
             method: "POST",
@@ -20,30 +27,24 @@ export async function getNewTokensWithRefreshToken(refreshToken: string): Promis
         });
 
         if (!res.ok) {
-            return false;
+            return null;
         }
 
         const { data } = await res.json();
         const { accessToken, refreshToken: newRefreshToken, token } = data;
 
-        if (accessToken) {
-            await setTokenInCookies("accessToken", accessToken);
-        }
+        // Still persist to cookies for the next server-side request (non-middleware)
+        if (accessToken) await setTokenInCookies("accessToken", accessToken);
+        if (newRefreshToken) await setTokenInCookies("refreshToken", newRefreshToken);
+        if (token) await setTokenInCookies("better-auth.session_token", token, 24 * 60 * 60);
 
-        if (newRefreshToken) {
-            await setTokenInCookies("refreshToken", newRefreshToken);
-        }
-
-        if (token) {
-            await setTokenInCookies("better-auth.session_token", token, 24 * 60 * 60);
-        }
-
-        return true;
+        return { accessToken, refreshToken: newRefreshToken, token };
     } catch (error) {
         console.error("Error refreshing token:", error);
-        return false;
+        return null;
     }
 }
+
 
 /**
  * Refreshes tokens AND returns the NEW token values directly.

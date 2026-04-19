@@ -1,9 +1,10 @@
+//src/providers/AuthProvider.tsx
 "use client";
 
 import { createContext, useContext, useState } from "react";
 import { logoutUser } from "@/services/auth.services";
 import { useRouter } from "next/navigation";
-import { ICurrentUser } from "@/lib/authUtils"; // ✅ import করুন
+import { ICurrentUser } from "@/types/user.types";
 
 // ✅ আলাদা CurrentUser বাদ দিয়ে ICurrentUser ব্যবহার করুন
 interface AuthContextType {
@@ -27,8 +28,7 @@ export function AuthProvider({
     const logout = async () => {
         setUser(null);
         await logoutUser();
-        router.refresh();
-        router.push("/login");
+        window.location.href = "/login";
     };
 
     return (

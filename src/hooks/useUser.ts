@@ -1,5 +1,6 @@
+//src/hooks/useUser.ts
 import { useAuth } from "@/providers/AuthProvider";
-import { ICurrentUser } from "@/lib/authUtils";
+import { ICurrentUser } from "@/types/user.types";
 
 export const useUser = () => {
     const { user, setUser, logout } = useAuth();
