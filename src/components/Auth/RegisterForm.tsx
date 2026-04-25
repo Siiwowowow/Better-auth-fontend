@@ -2,31 +2,29 @@
 "use client";
 
 import AppSubmitButton from "@/components/shared/form/AppSubmitButton";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { registerZodSchema } from "@/zod/auth.validation";
+import AppField from "../shared/form/AppField";
 import { useForm } from "@tanstack/react-form";
-import { Eye, EyeOff, Camera, X } from "lucide-react";
-import Link from "next/link";
-import { useRef, useState } from "react";
+import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { registerAction } from "@/app/(authRouteGroup)/(auth)/register/_action";
-import AppField from "../shared/form/AppField";
-import SocialLogin from "../shared/socialLogin/socialLogin";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
 import Image from "next/image";
+import { Camera, X, Eye, EyeOff, User, Mail, Lock, Store, Phone, MapPin, Building, ShoppingBag, Truck, Shield } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import SocialLogin from "../shared/socialLogin/socialLogin";
 
 const RegisterForm = () => {
   const router = useRouter();
-  const [serverError, setServerError] = useState<string | null>(null);
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [isPending, setIsPending] = useState(false);
 
-  // ✅ Image preview state
+  const [role, setRole] = useState<"CUSTOMER" | "SELLER">("CUSTOMER");
+  const [serverError, setServerError] = useState<string | null>(null);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const form = useForm({
@@ -34,47 +32,72 @@ const RegisterForm = () => {
       name: "",
       email: "",
       password: "",
-      confirmPassword: "",
+      shopName: "",
+      shopAddress: "",
+      phoneNumber: "",
+      shippingAddress: "",
     },
 
     onSubmit: async ({ value }) => {
       setServerError(null);
-      setIsPending(true);
+      setIsLoading(true);
+
+      if (role === "SELLER" && !value.shopName) {
+        setServerError("Shop name is required");
+        setIsLoading(false);
+        return;
+      }
+
+      if (!value.name || !value.email || !value.password) {
+        setServerError("Name, email and password are required");
+        setIsLoading(false);
+        return;
+      }
+
+      if (value.password.length < 6) {
+        setServerError("Password must be at least 6 characters");
+        setIsLoading(false);
+        return;
+      }
 
       try {
-        // ✅ Zod validation
-        const parsed = registerZodSchema.safeParse(value);
-        if (!parsed.success) {
-          setServerError(parsed.error.issues[0]?.message || "Invalid input");
-          setIsPending(false);
-          return;
-        }
-
-        // ✅ FormData তৈরি করুন
         const formData = new FormData();
         formData.append("name", value.name);
         formData.append("email", value.email);
         formData.append("password", value.password);
+        formData.append("role", role);
 
         if (imageFile) {
           formData.append("profilePhoto", imageFile);
         }
 
+        if (role === "SELLER") {
+          formData.append("shopName", value.shopName);
+          if (value.shopAddress) formData.append("shopAddress", value.shopAddress);
+          if (value.phoneNumber) formData.append("phoneNumber", value.phoneNumber);
+        }
+
+        if (role === "CUSTOMER") {
+          if (value.phoneNumber) formData.append("phoneNumber", value.phoneNumber);
+          if (value.shippingAddress) formData.append("shippingAddress", value.shippingAddress);
+        }
+
         const result = await registerAction(formData) as any;
 
         if (!result.success) {
-          setServerError(result.message || "Registration failed");
+          setServerError(result.message);
           toast.error(result.message);
+          setIsLoading(false);
           return;
         }
 
-        toast.success("Registration successful! Please verify your email.");
+        toast.success("Registration successful! Please check your email.");
         router.push(`/verify-email?email=${encodeURIComponent(value.email)}`);
-      } catch (error: any) {
-        setServerError(`Registration failed: ${error.message}`);
-        toast.error(error.message);
+      } catch (err: any) {
+        setServerError(err.message);
+        toast.error(err.message);
       } finally {
-        setIsPending(false);
+        setIsLoading(false);
       }
     },
   });
@@ -83,7 +106,6 @@ const RegisterForm = () => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // 5MB limit check
     if (file.size > 5 * 1024 * 1024) {
       toast.error("Image must be less than 5MB");
       return;
@@ -101,189 +123,275 @@ const RegisterForm = () => {
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
-  // Get initials for placeholder
-  const getInitials = (name: string) => {
-    return name
-      ? name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2)
-      : "?";
-  };
-
   return (
-    <Card className="w-full max-w-md mx-auto shadow-md">
-      <CardHeader className="text-center">
-        <CardTitle className="text-2xl font-bold">Create Account</CardTitle>
-        <CardDescription>Fill in your details to get started.</CardDescription>
-      </CardHeader>
+    <div className="min-h-screen w-full flex items-center justify-center py-8 sm:py-12 px-4 sm:px-6 bg-gradient-to-br from-brand-soft/30 via-white to-brand-soft/20">
+      <Card className="w-full max-w-lg mx-auto shadow-2xl border-0 rounded-2xl overflow-hidden">
+        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-brand via-brand-light to-brand" />
+        
+        <CardHeader className="text-center pt-8 pb-4">
+          <div className="mx-auto w-14 h-14 bg-gradient-to-br from-brand to-brand-light rounded-2xl flex items-center justify-center shadow-lg mb-4">
+            {role === "SELLER" ? (
+              <Store className="w-7 h-7 text-blue-600" />
+            ) : (
+              <ShoppingBag className="w-7 h-7 text-blue-600" />
+            )}
+          </div>
+          <CardTitle className="text-2xl font-bold">
+            {role === "SELLER" ? "Seller Registration" : "Create Account"}
+          </CardTitle>
+          <CardDescription className="text-gray-500">
+            {role === "SELLER" 
+              ? "Join as a seller and start your business" 
+              : "Join MediStore for genuine medicines"}
+          </CardDescription>
+        </CardHeader>
 
-      <CardContent>
-        {/* ✅ Avatar Upload */}
-        <div className="flex flex-col items-center mb-6">
-          <div className="relative group">
+        <CardContent className="space-y-6 px-6 pb-8">
+          
+          {/* Role Toggle */}
+          <div className="bg-gray-100 rounded-xl p-1 flex gap-1">
             <button
               type="button"
-              onClick={() => fileInputRef.current?.click()}
-              className="relative w-24 h-24 rounded-full border-2 border-dashed border-blue-300 hover:border-blue-500 transition-colors overflow-hidden bg-blue-50 flex items-center justify-center focus:outline-none"
+              onClick={() => setRole("CUSTOMER")}
+              className={`flex-1 py-2.5 px-4 rounded-lg text-sm font-medium transition-all duration-200 ${
+                role === "CUSTOMER"
+                  ? "bg-white text-brand shadow-sm"
+                  : "text-gray-500 hover:text-brand"
+              }`}
             >
-              {imagePreview ? (
-                <Image
-                  src={imagePreview}
-                  alt="Profile preview"
-                  fill
-                  className="object-cover"
-                />
-              ) : (
-                <div className="flex flex-col items-center gap-1 text-blue-400">
-                  <Camera className="w-7 h-7" />
-                  <span className="text-xs font-medium">Upload</span>
-                </div>
-              )}
-
-              {/* Hover overlay */}
-              {imagePreview && (
-                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                  <Camera className="w-6 h-6 text-white" />
-                </div>
-              )}
+              <div className="flex items-center justify-center gap-2">
+                <User className="w-4 h-4" />
+                Customer
+              </div>
             </button>
-
-            {/* Remove button */}
-            {imagePreview && (
-              <button
-                type="button"
-                onClick={removeImage}
-                className="absolute -top-1 -right-1 w-6 h-6 rounded-full bg-red-500 hover:bg-red-600 text-white flex items-center justify-center transition-colors"
-              >
-                <X className="w-3 h-3" />
-              </button>
-            )}
+            <button
+              type="button"
+              onClick={() => setRole("SELLER")}
+              className={`flex-1 py-2.5 px-4 rounded-lg text-sm font-medium transition-all duration-200 ${
+                role === "SELLER"
+                  ? "bg-white text-brand shadow-sm"
+                  : "text-gray-500 hover:text-brand"
+              }`}
+            >
+              <div className="flex items-center justify-center gap-2">
+                <Store className="w-4 h-4" />
+                Seller
+              </div>
+            </button>
           </div>
 
-          <p className="text-xs text-muted-foreground mt-2">
-            {imagePreview ? imageFile?.name : "Click to upload profile photo (optional)"}
-          </p>
-
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/jpeg,image/jpg,image/png,image/webp"
-            className="hidden"
-            onChange={handleImageChange}
-          />
+          {/* Avatar Upload */}
+          {/* Avatar Upload Section */}
+<div className="flex justify-center">
+  <div className="relative">
+    <button
+      type="button"
+      onClick={() => fileInputRef.current?.click()}
+      className="relative w-24 h-24 rounded-full border-2 border-dashed border-brand/40 hover:border-brand transition-all duration-200 flex items-center justify-center overflow-hidden bg-brand-soft/30 hover:bg-brand-soft/50"
+    >
+      {imagePreview ? (
+        <img
+          src={imagePreview}
+          alt="Profile preview"
+          className="w-full h-full object-cover"
+        />
+      ) : (
+        <div className="flex flex-col items-center gap-1 text-brand">
+          <Camera className="w-6 h-6" />
+          <span className="text-[10px] font-medium">Upload photo</span>
         </div>
+      )}
+    </button>
+    {imagePreview && (
+      <button
+        onClick={removeImage}
+        className="absolute -top-1 -right-1 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 transition-all shadow-md z-10"
+      >
+        <X size={12} />
+      </button>
+    )}
+  </div>
+  <input
+    ref={fileInputRef}
+    type="file"
+    accept="image/jpeg,image/jpg,image/png,image/webp"
+    className="hidden"
+    onChange={handleImageChange}
+  />
+</div>
 
-        {/* Form fields */}
-        <form
-          method="POST"
-          action="#"
-          noValidate
-          onSubmit={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            form.handleSubmit();
-          }}
-          className="space-y-4"
-        >
-          <form.Field
-            name="name"
-            validators={{ onChange: registerZodSchema.shape.name }}
-          >
-            {(field) => (
-              <AppField field={field} label="Full Name" type="text" placeholder="Enter your full name" />
-            )}
-          </form.Field>
-
-          <form.Field
-            name="email"
-            validators={{ onChange: registerZodSchema.shape.email }}
-          >
-            {(field) => (
-              <AppField field={field} label="Email" type="email" placeholder="Enter your email" />
-            )}
-          </form.Field>
-
-          <form.Field
-            name="password"
-            validators={{ onChange: registerZodSchema.shape.password }}
-          >
-            {(field) => (
-              <AppField
-                field={field}
-                label="Password"
-                type={showPassword ? "text" : "password"}
-                placeholder="Enter your password"
-                append={
-                  <Button type="button" onClick={() => setShowPassword((v) => !v)} variant="ghost" size="icon">
-                    {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
-                  </Button>
-                }
-              />
-            )}
-          </form.Field>
-
-          <form.Field
-            name="confirmPassword"
-            validators={{
-              onChange: ({ value, fieldApi }) => {
-                if (value !== fieldApi.form.getFieldValue("password")) return "Passwords do not match";
-                return undefined;
-              },
+          {/* Form */}
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              form.handleSubmit();
             }}
+            className="space-y-4"
           >
-            {(field) => (
-              <AppField
-                field={field}
-                label="Confirm Password"
-                type={showConfirmPassword ? "text" : "password"}
-                placeholder="Confirm your password"
-                append={
-                  <Button type="button" onClick={() => setShowConfirmPassword((v) => !v)} variant="ghost" size="icon">
-                    {showConfirmPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
-                  </Button>
-                }
-              />
+            <form.Field name="name">
+              {(field) => (
+                <AppField
+                  field={field}
+                  label="Full Name"
+                  placeholder="Enter your full name"
+                  prepend={<User className="w-4 h-4 text-gray-400" />}
+                  required
+                />
+              )}
+            </form.Field>
+
+            <form.Field name="email">
+              {(field) => (
+                <AppField
+                  field={field}
+                  label="Email Address"
+                  type="email"
+                  placeholder="you@example.com"
+                  prepend={<Mail className="w-4 h-4 text-gray-400" />}
+                  required
+                />
+              )}
+            </form.Field>
+
+            {/* Password Field - Fixed Button Position */}
+            <form.Field name="password">
+              {(field) => (
+                <div className="space-y-1.5">
+                  <Label className="text-sm font-medium text-gray-700">
+                    Password <span className="text-red-500 ml-1">*</span>
+                  </Label>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 flex items-center pl-3 z-10">
+                      <Lock className="w-4 h-4 text-gray-400" />
+                    </div>
+                    <input
+                      type={showPassword ? "text" : "password"}
+                      value={field.state.value}
+                      placeholder="Create a password"
+                      onBlur={field.handleBlur}
+                      onChange={(e) => field.handleChange(e.target.value)}
+                      className="w-full pl-10 pr-10 py-2.5 rounded-xl border border-gray-200 focus:border-brand focus:ring-2 focus:ring-brand/20 transition-all outline-none"
+                    />
+                    <div className="absolute inset-y-0 right-0 flex items-center pr-2 z-10">
+                      <Button
+                        type="button"
+                        size="icon"
+                        variant="ghost"
+                        className="h-8 w-8"
+                        onClick={() => setShowPassword(!showPassword)}
+                      >
+                        {showPassword ? (
+                          <EyeOff className="w-4 h-4 text-gray-400" />
+                        ) : (
+                          <Eye className="w-4 h-4 text-gray-400" />
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+                  {field.state.meta.isTouched && field.state.meta.errors.length > 0 && (
+                    <p className="text-sm text-red-500">{field.state.meta.errors[0]}</p>
+                  )}
+                </div>
+              )}
+            </form.Field>
+            <p className="text-xs text-gray-400 -mt-2">Minimum 6 characters</p>
+
+            <form.Field name="phoneNumber">
+              {(field) => (
+                <AppField
+                  field={field}
+                  label="Phone Number"
+                  placeholder="+880 1XXX XXXXXX"
+                  prepend={<Phone className="w-4 h-4 text-gray-400" />}
+                />
+              )}
+            </form.Field>
+
+            {role === "SELLER" && (
+              <>
+                <form.Field name="shopName">
+                  {(field) => (
+                    <AppField
+                      field={field}
+                      label="Shop Name"
+                      placeholder="Your pharmacy/shop name"
+                      prepend={<Building className="w-4 h-4 text-gray-400" />}
+                      required
+                    />
+                  )}
+                </form.Field>
+                <form.Field name="shopAddress">
+                  {(field) => (
+                    <AppField
+                      field={field}
+                      label="Shop Address"
+                      placeholder="Shop address (optional)"
+                      prepend={<MapPin className="w-4 h-4 text-gray-400" />}
+                    />
+                  )}
+                </form.Field>
+              </>
             )}
-          </form.Field>
 
-          {serverError && (
-            <Alert variant="destructive">
-              <AlertDescription>{serverError}</AlertDescription>
-            </Alert>
-          )}
+            {role === "CUSTOMER" && (
+              <form.Field name="shippingAddress">
+                {(field) => (
+                  <AppField
+                    field={field}
+                    label="Shipping Address"
+                    placeholder="Your delivery address (optional)"
+                    prepend={<MapPin className="w-4 h-4 text-gray-400" />}
+                  />
+                )}
+              </form.Field>
+            )}
 
-          <form.Subscribe selector={(s) => [s.canSubmit, s.isSubmitting] as const}>
-            {([canSubmit, isSubmitting]) => (
-              <AppSubmitButton
-                isPending={isSubmitting || isPending}
-                pendingLabel="Creating Account..."
-                disabled={!canSubmit}
+            {/* Benefits */}
+            <div className="flex flex-wrap gap-4 justify-center pt-2">
+              <div className="flex items-center gap-1.5 text-xs text-gray-500">
+                <Truck className="w-3.5 h-3.5 text-brand" />
+                Free Shipping
+              </div>
+              <div className="flex items-center gap-1.5 text-xs text-gray-500">
+                <Shield className="w-3.5 h-3.5 text-brand" />
+                Genuine Meds
+              </div>
+              <div className="flex items-center gap-1.5 text-xs text-gray-500">
+                <Phone className="w-3.5 h-3.5 text-brand" />
+                24/7 Support
+              </div>
+            </div>
+
+            {serverError && (
+              <div className="bg-red-50 border border-red-200 rounded-xl p-3">
+                <p className="text-red-600 text-sm text-center">{serverError}</p>
+              </div>
+            )}
+
+            <AppSubmitButton
+              isPending={isLoading}
+              pendingLabel="Creating account..."
+              className="w-full"
+            >
+              {role === "SELLER" ? "Register as Seller" : "Create Account"}
+            </AppSubmitButton>
+            <SocialLogin/>
+          </form>
+
+          <div className="text-center pt-2">
+            <p className="text-sm text-gray-500">
+              Already have an account?{" "}
+              <button
+                onClick={() => router.push("/login")}
+                className="text-brand font-semibold hover:text-brand-dark hover:underline transition-colors"
               >
-                Sign Up
-              </AppSubmitButton>
-            )}
-          </form.Subscribe>
-        </form>
-
-        <div className="relative my-6">
-          <div className="absolute inset-0 flex items-center">
-            <div className="w-full border-t border-gray-300" />
+                Sign in
+              </button>
+            </p>
           </div>
-          <div className="relative flex justify-center text-sm">
-            <span className="px-2 bg-white text-gray-500">Or continue with</span>
-          </div>
-        </div>
-
-        <SocialLogin />
-      </CardContent>
-
-      <CardFooter className="justify-center border-t pt-4">
-        <p className="text-sm text-muted-foreground">
-          Already have an account?{" "}
-          <Link href="/login" className="text-primary font-medium hover:underline underline-offset-4">
-            Sign in
-          </Link>
-        </p>
-      </CardFooter>
-    </Card>
+        </CardContent>
+      </Card>
+    </div>
   );
 };
 

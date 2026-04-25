@@ -1,114 +1,97 @@
-export type UserRole = "SUPER_ADMIN" | "ADMIN" | "USER";
+// src/lib/authUtils.ts
 
-export const authRoutes = [ "/login", "/register", "/forgot-password", "/reset-password", "/verify-email" ];
+export type UserRole = "SUPER_ADMIN" | "ADMIN" | "SELLER" | "CUSTOMER";
 
-export const isAuthRoute = (pathname : string) => {
-    return authRoutes.some((router : string) => router === pathname);
-}
+export const authRoutes = [
+  "/login",
+  "/register",
+  "/forgot-password",
+  "/reset-password",
+  "/verify-email",
+];
+
+export const isAuthRoute = (pathname: string): boolean => {
+  return authRoutes.some((route) => route === pathname);
+};
 
 export type RouteConfig = {
-    exact : string[],
-    pattern : RegExp[]
-}
+  exact: string[];
+  pattern: RegExp[];
+};
 
-export const commonProtectedRoutes : RouteConfig = {
-    exact : ["/my-profile", "/change-password"],
-    pattern : []
-}
+// Customer Routes
+export const customerRoutes: RouteConfig = {
+  exact: ["/dashboard", "/cart", "/checkout", "/orders", "/wishlist", "/profile"],
+  pattern: [/^\/orders\/.*/, /^\/profile\/.*/],
+};
 
-export const userProtectedRoutes : RouteConfig = {
-    pattern: [/^\/user\/dashboard/ ], // Matches any path that starts with /doctor/dashboard
-    exact : []
-}
+// Seller Routes
+export const sellerRoutes: RouteConfig = {
+  exact: ["/seller/dashboard", "/seller/medicines", "/seller/orders", "/seller/profile"],
+  pattern: [/^\/seller\/.*/],
+};
 
-export const adminProtectedRoutes : RouteConfig = {
-    pattern: [/^\/admin\/dashboard/ ], // Matches any path that starts with /admin/dashboard
-    exact : []
-}
+// Admin Routes
+export const adminRoutes: RouteConfig = {
+  exact: ["/admin/dashboard", "/admin/users", "/admin/orders", "/admin/categories"],
+  pattern: [/^\/admin\/.*/],
+};
 
-// export const superAdminProtectedRoutes : RouteConfig = {
-//     pattern: [/^\/admin\/dashboard/ ], // Matches any path that starts with /super-admin/dashboard
-//     exact : []
-// }
+// Common Protected Routes
+export const commonProtectedRoutes: RouteConfig = {
+  exact: ["/change-password"],
+  pattern: [],
+};
 
-// export const patientProtectedRoutes : RouteConfig = {
-//     pattern: [/^\/dashboard/ ], // Matches any path that starts with /dashboard
-//     exact : [ "/payment/success"]
-// };
+export const isRouteMatches = (pathname: string, routes: RouteConfig): boolean => {
+  if (routes.exact.includes(pathname)) return true;
+  return routes.pattern.some((pattern) => pattern.test(pathname));
+};
 
-export const isRouteMatches = (pathname : string, routes : RouteConfig) => {
-    if(routes.exact.includes(pathname)) {
-        return true;
-    }
-    return routes.pattern.some((pattern : RegExp) => pattern.test(pathname));
-}
+export const getRouteOwner = (
+  pathname: string
+): "ADMIN" | "SELLER" | "CUSTOMER" | "COMMON" | null => {
+  if (isRouteMatches(pathname, adminRoutes)) return "ADMIN";
+  if (isRouteMatches(pathname, sellerRoutes)) return "SELLER";
+  if (isRouteMatches(pathname, customerRoutes)) return "CUSTOMER";
+  if (isRouteMatches(pathname, commonProtectedRoutes)) return "COMMON";
+  return null;
+};
 
-export const getRouteOwner = (pathname : string) : "SUPER_ADMIN" | "ADMIN" | "USER" | "COMMON" | null => {
-    if(isRouteMatches(pathname, userProtectedRoutes)) {
-        return "USER";
-    }
+// ✅ Role অনুযায়ী Dashboard Route
+export const getDefaultDashboardRoute = (role: UserRole): string => {
+  switch (role) {
+    case "SUPER_ADMIN":
+    case "ADMIN":
+      return "/admin/dashboard";
+    case "SELLER":
+      return "/seller/dashboard";
+    case "CUSTOMER":
+      return "/dashboard";
+    default:
+      return "/";
+  }
+};
 
-    // if (isRouteMatches(pathname, superAdminProtectedRoutes)) {
-    //     return "SUPER_ADMIN";
-    // }
+export const isValidRedirectForRole = (redirectPath: string, role: UserRole): boolean => {
+  const sanitizedRedirectPath = redirectPath.split("?")[0] || redirectPath;
+  const routeOwner = getRouteOwner(sanitizedRedirectPath);
 
-    if(isRouteMatches(pathname, adminProtectedRoutes)) {
-        return "ADMIN";
-    }
-    
-    if(isRouteMatches(pathname, userProtectedRoutes)) {
-        return "USER";
-    }
+  if (routeOwner === null || routeOwner === "COMMON") return true;
 
-    if(isRouteMatches(pathname, commonProtectedRoutes)) {
-        return "COMMON";
-    }
+  // SUPER_ADMIN can access admin routes
+  if (routeOwner === "ADMIN" && (role === "SUPER_ADMIN" || role === "ADMIN")) return true;
+  if (routeOwner === role) return true;
 
-    return null; // public route
-}
+  return false;
+};
 
-export const getDefaultDashboardRoute = (role : UserRole) => {
-    if(role === "ADMIN" || role === "SUPER_ADMIN") {
-        return "/admin/dashboard";
-    }
-    if(role === "USER") {
-        return "/user/dashboard";
-    }
-    // if(role === "PATIENT") {
-    //     return "/dashboard";
-    // }
-
-    return "/";
-}
-
-export const isValidRedirectForRole = (redirectPath : string, role : UserRole) => {
-    const unifySuperAdminAndAdminRole = role === "SUPER_ADMIN" ? "ADMIN" : role;
-
-    role = unifySuperAdminAndAdminRole;
-
-    const sanitizedRedirectPath = redirectPath.split("?")[0] || redirectPath;
-    const routeOwner = getRouteOwner(sanitizedRedirectPath);
-
-    if(routeOwner === null || routeOwner === "COMMON"){
-        return true;
-    }
-
-    if(routeOwner === role){
-        return true;
-    }
-
-    return false;
-}
-
-export const getRedirectAfterLogin = (
-  role: UserRole,
-  redirectPath?: string
-) => {
-  // 1️⃣ If redirectPath is provided AND valid → use it
+// ✅ লগইন বা রেজিস্ট্রেশনের পর রিডাইরেক্ট
+export const getRedirectAfterLogin = (role: UserRole, redirectPath?: string): string => {
+  // যদি redirectPath দেওয়া থাকে এবং valid হয়
   if (redirectPath && isValidRedirectForRole(redirectPath, role)) {
     return redirectPath;
   }
-
-  // 2️⃣ Otherwise → return default dashboard
+  // নাহলে রোল অনুযায়ী ডিফল্ট ড্যাশবোর্ড
   return getDefaultDashboardRoute(role);
 };

@@ -23,12 +23,14 @@ import { useRouter } from "next/navigation";
 import { useUser } from "@/hooks/useUser";
 import { toast } from "sonner";
 import SocialLogin from "../shared/socialLogin/socialLogin";
+import { UserRole } from "@/lib/authUtils";
 
 interface LoginFormProps {
   redirectPath?: string;
+  defaultEmail?: string;      // 👈 যোগ করা হয়েছে (Register থেকে email pass করার জন্য)
 }
 
-const LoginForm = ({ redirectPath }: LoginFormProps) => {
+const LoginForm = ({ redirectPath, defaultEmail = "" }: LoginFormProps) => {
   const [serverError, setServerError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const router = useRouter();
@@ -40,7 +42,7 @@ const LoginForm = ({ redirectPath }: LoginFormProps) => {
 
   const form = useForm({
     defaultValues: {
-      email: "",
+      email: defaultEmail,    // 👈 যোগ করা হয়েছে (URL থেকে email pre-fill হবে)
       password: "",
     },
 
@@ -57,14 +59,15 @@ const LoginForm = ({ redirectPath }: LoginFormProps) => {
         toast.success("Login successful!");
         setUser(result.user);
 
-        // ✅ KEY FIX: layout.tsx re-render হবে, server থেকে user আসবে
-        // এটা ছাড়া reload দিলে user চলে যেত
         router.refresh();
 
         if (result.redirectUrl) {
           router.push(result.redirectUrl);
         } else {
-          router.push("/");
+          // 👈 Fallback: Role based redirect
+          const userRole = result.user?.role as UserRole;
+          const roleBasedRedirect = getRoleBasedRedirect(userRole);
+          router.push(roleBasedRedirect);
         }
       } catch (error: any) {
         console.log(`Login failed: ${error.message}`);
@@ -72,6 +75,21 @@ const LoginForm = ({ redirectPath }: LoginFormProps) => {
       }
     },
   });
+
+  // 👈 Fallback function for role based redirect
+  const getRoleBasedRedirect = (role: UserRole): string => {
+    switch (role) {
+      case "SUPER_ADMIN":
+      case "ADMIN":
+        return "/admin/dashboard";
+      case "SELLER":
+        return "/seller/dashboard";
+      case "CUSTOMER":
+        return "/dashboard";
+      default:
+        return "/";
+    }
+  };
 
   return (
     <Card className="w-full max-w-md mx-auto shadow-md">

@@ -19,8 +19,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Batter Auth",
-  description: "Advanced authentication flow with better-auth",
+  title: "MediStore",
+  description: "Trusted Pharmacy",
 };
 
 export default async function RootLayout({
@@ -31,11 +31,8 @@ export default async function RootLayout({
   const user = await getUserInfo();
 
   return (
-    <html
-      lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
-    >
-      <body className="min-h-full flex flex-col">
+    <html lang="en">
+      <body className="flex flex-col min-h-screen font-poppins antialiased">
         <QueryProviders>
           <AuthProvider initialUser={user}>
             <TooltipProvider>

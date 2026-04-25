@@ -1,4 +1,3 @@
-//src/app/(authRouteGroup)/(auth)/login/_action.ts
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use server";
 
@@ -44,7 +43,7 @@ export const loginAction = async (
 
     const { role, needPasswordChange, email } = user;
 
-    // ✅ set cookies - 3 days auto logout (259200 seconds = 3 days)
+    // ✅ set cookies - 3 days auto logout
     const threeDays = 3 * 24 * 60 * 60;
     await setTokenInCookies("accessToken", accessToken, 24 * 60 * 60, threeDays);
     await setTokenInCookies("refreshToken", refreshToken, 24 * 60 * 60, threeDays);
@@ -60,11 +59,13 @@ export const loginAction = async (
       redirect(`/reset-password?email=${email}`);
     }
 
-    // ✅ correct redirect logic (SAFE)
+    // ✅ Role অনুযায়ী redirect logic
     const finalRedirect = getRedirectAfterLogin(
       role as UserRole,
       redirectPath
     );
+
+    console.log(`✅ User role: ${role}, redirecting to: ${finalRedirect}`);
 
     return {
       success: true,
